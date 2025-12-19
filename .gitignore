@@ -1,0 +1,31 @@
+# Dependencies
+node_modules
+.pnp*
+
+# Build outputs
+.next
+out
+build
+dist
+.coverage
+coverage
+
+# Python
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+.venv
+.env
+.env.*
+
+# App artifacts
+backend/runs
+frontend/.next
+frontend/.turbo
+frontend/.vercel
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,33 @@
+version: '3.9'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PREDIQL_ALLOWED_ORIGINS=http://localhost:3000
+      - PREDIQL_OLLAMA_BASE_URL=http://ollama:11434
+      - PREDIQL_OPENAI_COMPAT_BASE_URL=${PREDIQL_OPENAI_COMPAT_BASE_URL:-https://api.openai.com/v1}
+    volumes:
+      - ./backend/runs:/app/runs
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama: {}
