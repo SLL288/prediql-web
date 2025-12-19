@@ -25,15 +25,16 @@ export default function Page() {
   useEffect(() => {
     if (!runId) return
 
+    const currentRunId = runId
     let cancelled = false
 
     async function pollStatus() {
       try {
-        const status = await apiClient.getRun(runId)
+        const status = await apiClient.getRun(currentRunId)
         if (cancelled) return
         setRunState(status)
         if (status.status === 'done') {
-          fetchResults(runId)
+          fetchResults(currentRunId)
         }
       } catch (err) {
         console.error(err)
@@ -42,7 +43,7 @@ export default function Page() {
 
     async function pollLogs() {
       try {
-        const res = await apiClient.getLogs(runId, logCursorRef.current)
+        const res = await apiClient.getLogs(currentRunId, logCursorRef.current)
         if (cancelled) return
         if (res.lines.length) {
           setLogs((prev) => [...prev, ...res.lines])

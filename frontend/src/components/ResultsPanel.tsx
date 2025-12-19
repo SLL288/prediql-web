@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react'
 import { ResultsResponse } from '../lib/types'
-import clsx from 'clsx'
 
 type Props = {
   results: ResultsResponse | null

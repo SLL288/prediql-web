@@ -1,4 +1,4 @@
-import { ApiClient, RunPayload } from './types'
+import { ApiClient } from './types'
 import { mockApiClient } from './mockApi'
 
 const mode = process.env.NEXT_PUBLIC_API_MODE || 'mock'
