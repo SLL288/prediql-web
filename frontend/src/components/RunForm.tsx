@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { RunPayload, LlmProvider } from '../lib/types'
 import { isPositiveInt, isValidHttpUrl, tryParseJson } from '../lib/validators'
+import { apiMode } from '../lib/apiClient'
 
 const providerOptions: { value: LlmProvider; label: string }[] = [
   { value: 'ollama', label: 'Ollama (local/self-hosted)' },
@@ -76,7 +77,9 @@ export function RunForm({ onSubmit, isSubmitting }: Props) {
           <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Configuration</p>
           <h2 className="text-xl font-semibold text-white">Run parameters</h2>
         </div>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">Mock API mode</span>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
+          {apiMode === 'mock' ? 'Mock API mode' : 'REST API mode'}
+        </span>
       </div>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>

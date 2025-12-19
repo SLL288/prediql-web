@@ -5,6 +5,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+<<<<<<< HEAD
       - PREDIQL_ALLOWED_ORIGINS=http://localhost:3000
       - PREDIQL_OLLAMA_BASE_URL=http://ollama:11434
       - PREDIQL_OPENAI_COMPAT_BASE_URL=${PREDIQL_OPENAI_COMPAT_BASE_URL:-https://api.openai.com/v1}
@@ -23,11 +24,38 @@ services:
   ollama:
     image: ollama/ollama:latest
     profiles: ["ollama"]
+=======
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - RUNS_DIR=/app/runs
+      - CORS_ORIGINS=http://localhost:3000
+      - MAX_ROUNDS=5
+      - MAX_REQUESTS_PER_NODE=5
+    volumes:
+      - backend_runs:/app/runs
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+>>>>>>> ce8b939 (Add FastAPI backend, Ollama compose stack, and REST-enabled frontend)
     ports:
       - "11434:11434"
     volumes:
       - ollama:/root/.ollama
     restart: unless-stopped
+<<<<<<< HEAD
 
 volumes:
   ollama: {}
+=======
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ollama: {}
+  backend_runs: {}
+>>>>>>> ce8b939 (Add FastAPI backend, Ollama compose stack, and REST-enabled frontend)

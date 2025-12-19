@@ -14,10 +14,14 @@ export type RunPayload = {
 export type RunState = {
   runId: string
   status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
-  progress: number
-  startedAt?: string
-  finishedAt?: string
-  error?: string
+  progress: {
+    pct: number
+    stage: string
+    detail?: string | null
+  }
+  startedAt?: string | null
+  finishedAt?: string | null
+  error?: string | null
 }
 
 export type LogsResponse = {
@@ -28,7 +32,7 @@ export type LogsResponse = {
 export type ResultArtifact = { name: string; url: string }
 
 export type ResultsResponse = {
-  summary: string
+  summary: Record<string, any>
   artifacts: ResultArtifact[]
   rawJson: Record<string, any>
 }

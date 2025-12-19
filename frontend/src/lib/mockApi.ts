@@ -73,7 +73,17 @@ function scheduleSimulation(sim: Simulation) {
       ],
     }
     sim.results = {
-      summary: `Scanned ${sim.payload.endpointUrl}. Found ${rawJson.validQueriesFound} plausible queries and ${rawJson.potentialIssues.length} potential issues.`,
+      summary: {
+        endpoint: sim.payload.endpointUrl,
+        candidates: rawJson.validQueriesFound,
+        executions: rawJson.mutationsTried,
+        counts: {
+          types: 0,
+          queries: 0,
+          mutations: rawJson.mutationsTried,
+        },
+        text: `Scanned ${sim.payload.endpointUrl}. Found ${rawJson.validQueriesFound} plausible queries and ${rawJson.potentialIssues.length} potential issues.`,
+      },
       artifacts: [
         { name: 'summary.json', url: '#' },
         { name: 'raw_results.json', url: '#' },
@@ -114,7 +124,7 @@ export const mockApiClient: ApiClient = {
     return {
       runId: sim.runId,
       status: sim.status,
-      progress: sim.progress,
+      progress: { pct: sim.progress, stage: sim.status },
       startedAt: sim.startedAt,
       finishedAt: sim.finishedAt,
       error: sim.error,

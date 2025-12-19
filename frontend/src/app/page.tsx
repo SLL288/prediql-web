@@ -80,7 +80,7 @@ export default function Page() {
     try {
       const { runId: newRunId } = await apiClient.createRun(payload)
       setRunId(newRunId)
-      setRunState({ runId: newRunId, status: 'queued', progress: 0 })
+      setRunState({ runId: newRunId, status: 'queued', progress: { pct: 0, stage: 'queued' } })
     } catch (err: any) {
       setError(err?.message || 'Failed to start run')
     } finally {

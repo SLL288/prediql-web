@@ -12,11 +12,14 @@ export function ResultsPanel({ results }: Props) {
 
   const cards = useMemo(() => {
     if (!results) return []
-    const raw = results.rawJson || {}
+    const summary = results.summary || {}
+    const counts = summary.counts || {}
     return [
-      { label: 'Valid queries', value: raw.validQueriesFound ?? 'n/a' },
-      { label: 'Mutations tried', value: raw.mutationsTried ?? 'n/a' },
-      { label: 'Potential issues', value: raw.potentialIssues?.length ?? 'n/a' },
+      { label: 'Types', value: counts.types ?? 'n/a' },
+      { label: 'Queries', value: counts.queries ?? 'n/a' },
+      { label: 'Mutations', value: counts.mutations ?? 'n/a' },
+      { label: 'Candidates', value: summary.candidates ?? 'n/a' },
+      { label: 'Executions', value: summary.executions ?? 'n/a' },
     ]
   }, [results])
 
@@ -48,7 +51,7 @@ export function ResultsPanel({ results }: Props) {
         <div className="flex gap-2 text-xs">
           <button
             className="rounded-lg border border-white/20 px-3 py-1 text-slate-100 hover:border-white/50"
-            onClick={() => download('summary.json', { summary: results.summary })}
+            onClick={() => download('summary.json', results.summary)}
           >
             Download summary.json
           </button>
@@ -61,7 +64,10 @@ export function ResultsPanel({ results }: Props) {
         </div>
       </div>
 
-      <p className="mt-3 text-slate-200 leading-relaxed">{results.summary}</p>
+      <p className="mt-3 text-slate-200 leading-relaxed">
+        Endpoint: {results.summary?.endpoint || 'n/a'} • Candidates: {results.summary?.candidates ?? 'n/a'} • Executions:{' '}
+        {results.summary?.executions ?? 'n/a'}
+      </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {cards.map((card) => (

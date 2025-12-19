@@ -25,7 +25,7 @@ export function RunStatus({ run, onCancel }: Props) {
     )
   }
 
-  const pct = Math.round((run.progress || 0) * 100)
+  const progressPct = Math.round((run.progress?.pct || 0) * 100)
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
@@ -43,11 +43,14 @@ export function RunStatus({ run, onCancel }: Props) {
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs text-slate-300">
           <span>Progress</span>
-          <span className="font-mono">{pct}%</span>
+          <span className="font-mono">{progressPct}%</span>
         </div>
         <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300" style={{ width: `${progressPct}%` }} />
         </div>
+        <p className="mt-1 text-xs text-slate-400">
+          Stage: {run.progress?.stage || 'n/a'} {run.progress?.detail ? `— ${run.progress.detail}` : ''}
+        </p>
         {run.error && <p className="mt-2 text-sm text-red-200">{run.error}</p>}
       </div>
 

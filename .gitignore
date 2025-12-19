@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules
 .pnp*
@@ -29,3 +30,16 @@ frontend/.vercel
 # OS
 .DS_Store
 Thumbs.db
+=======
+node_modules
+.next
+out
+frontend/.next
+frontend/node_modules
+frontend/out
+backend/runs
+.env
+*.pyc
+__pycache__
+.DS_Store
+>>>>>>> ce8b939 (Add FastAPI backend, Ollama compose stack, and REST-enabled frontend)
