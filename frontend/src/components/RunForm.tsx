@@ -6,10 +6,10 @@ import { RunPayload, LlmProvider } from '../lib/types'
 import { isPositiveInt, isValidHttpUrl, tryParseJson } from '../lib/validators'
 import { apiMode } from '../lib/apiClient'
 
-const providerOptions: { value: LlmProvider; label: string }[] = [
-  { value: 'ollama', label: 'Ollama (local/self-hosted)' },
-  { value: 'openai_compatible', label: 'OpenAI Compatible API' },
-  { value: 'gemini', label: 'Gemini API' },
+const providerOptions: { value: LlmProvider; label: string; models: string[]; placeholder: string }[] = [
+  { value: 'ollama', label: 'Ollama (local/self-hosted)', models: ['llama3', 'llama3.2'], placeholder: 'llama3' },
+  { value: 'openai_compatible', label: 'OpenAI Compatible API', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'], placeholder: 'gpt-4o-mini' },
+  { value: 'gemini', label: 'Gemini API', models: ['gemini-1.5-flash', 'gemini-1.5-pro'], placeholder: 'gemini-1.5-flash' },
 ]
 
 type Props = {
@@ -113,11 +113,19 @@ export function RunForm({ onSubmit, isSubmitting }: Props) {
           <label className="block space-y-2">
             <span className="text-sm text-slate-200">Model</span>
             <input
+              list="model-options"
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm"
-              placeholder={llmProvider === 'ollama' ? 'llama3' : 'gpt-4o-mini'}
+              placeholder={providerOptions.find((p) => p.value === llmProvider)?.placeholder || 'model name'}
               value={model}
               onChange={(e) => setModel(e.target.value)}
             />
+            <datalist id="model-options">
+              {providerOptions
+                .find((p) => p.value === llmProvider)
+                ?.models.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+            </datalist>
           </label>
         </div>
 
