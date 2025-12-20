@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
     RUNS_DIR: Path = Path("/app/runs")
     OLLAMA_BASE_URL: str = "http://ollama:11434"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com"
     DEFAULT_MODEL: str = "llama3"
     CORS_ORIGINS: str = "http://localhost:3000"
     MAX_ROUNDS: int = 5
@@ -48,8 +50,8 @@ class RunConfig(BaseModel):
 
     @field_validator("llm_provider")
     def validate_provider(cls, v: str) -> str:
-        if v not in {"ollama"}:
-            raise ValueError("Only ollama provider is supported in this MVP")
+        if v not in {"ollama", "openai_compatible", "gemini"}:
+            raise ValueError("Unsupported llmProvider")
         return v
 
 
