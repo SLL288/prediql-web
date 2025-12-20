@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   title: 'PrediQL Web',
   description: 'A dashboard to orchestrate PrediQL runs',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
     apple: '/apple-touch-icon.png',
     shortcut: '/favicon.ico',
   },
