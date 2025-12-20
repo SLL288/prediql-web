@@ -2,37 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, Dict, List
+import os
+from pathlib import Path
+from typing import Any, Dict
 
 from fastapi import HTTPException
 
-from app.core.graphql_client import GraphQLClient
 from app.core.models import Progress, RunConfig, RunStatus, settings
-from app.core.ollama_client import OllamaClient
-from app.core.openai_client import OpenAIClient
-from app.core.gemini_client import GeminiClient
 from app.core.storage import RunRegistry
-from app.core.utils import parse_headers
-
-
-def _build_llm_client(config: RunConfig):
-    if config.llm_provider == "ollama":
-        return OllamaClient(model=config.model or settings.DEFAULT_MODEL)
-    if config.llm_provider == "openai_compatible":
-        if not config.api_key:
-            raise HTTPException(status_code=400, detail="apiKey required for openai_compatible")
-        return OpenAIClient(api_key=config.api_key, model=config.model or "gpt-4o-mini", base_url=settings.OPENAI_BASE_URL)
-    if config.llm_provider == "gemini":
-        if not config.api_key:
-            raise HTTPException(status_code=400, detail="apiKey required for gemini")
-        return GeminiClient(api_key=config.api_key, model=config.model or "gemini-1.5-flash", base_url=settings.GEMINI_BASE_URL)
-    raise HTTPException(status_code=400, detail="Unsupported llmProvider")
 
 
 async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None:
-    headers = parse_headers(config.graphql_headers_json)
-    graph_client = GraphQLClient(config.endpoint_url, headers=headers)
-    llm_client = _build_llm_client(config)
+    """Run the legacy PrediQL pipeline (main.py) as a subprocess with per-run isolation."""
+    run_dir = Path(settings.RUNS_DIR) / run_id
+    legacy_dir = Path(__file__).resolve().parent.parent / "prediql_legacy"
 
     async def log(msg: str) -> None:
         await registry.append_log(run_id, msg)
@@ -40,66 +23,72 @@ async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None
     async def update_progress(pct: float, stage: str, detail: str | None = None) -> None:
         await registry.update_status(run_id, progress=Progress(pct=min(max(pct, 0.0), 1.0), stage=stage, detail=detail))
 
+    if config.llm_provider not in {"openai_compatible", "gemini"}:
+        raise HTTPException(status_code=400, detail="Only openai_compatible or gemini supported in legacy runner")
+    if not config.api_key:
+        raise HTTPException(status_code=400, detail="apiKey is required for this provider")
+
     try:
         await registry.update_status(run_id, status=RunStatus.running)
-        await update_progress(0.02, "initializing")
-        await log("Fetching GraphQL introspection...")
-        introspection = await graph_client.fetch_introspection()
-        schema_summary = summarize_introspection(introspection)
-        await log(f"Introspection summary: {schema_summary.get('counts')}")
+        await update_progress(0.05, "initializing")
 
-        await update_progress(0.15, "generating_candidates")
-        candidates: List[Dict[str, Any]] = []
-        for r in range(config.rounds):
-            if await registry.is_cancelled(run_id):
-                raise CancelledError()
-            await log(f"Round {r + 1}/{config.rounds}: asking LLM for candidates")
-            batch = await llm_client.generate_candidates(json.dumps(schema_summary), config.requests_per_node)
-            candidates.extend(batch)
-            await update_progress(0.15 + (0.25 * (r + 1) / max(config.rounds, 1)), "generating_candidates")
-            await asyncio.sleep(0.2)
+        env = os.environ.copy()
+        env.update(
+            {
+                "PREDIQL_RUN_ID": run_id,
+                "PREDIQL_RUN_ROOT": str(settings.RUNS_DIR),
+                "PREDIQL_LLM_PROVIDER": config.llm_provider,
+                "PREDIQL_API_KEY": config.api_key or "",
+                "PREDIQL_LLM_MODEL": config.model,
+                "PREDIQL_OPENAI_BASE_URL": settings.OPENAI_BASE_URL,
+                "PREDIQL_GEMINI_BASE_URL": settings.GEMINI_BASE_URL,
+            }
+        )
 
-        await log(f"Generated {len(candidates)} candidate queries")
+        cmd = [
+            "python",
+            "main.py",
+            "--url",
+            config.endpoint_url,
+            "--requests",
+            str(config.requests_per_node),
+            "--rounds",
+            str(config.rounds),
+        ]
+        await log(f"Starting legacy pipeline: {' '.join(cmd)}")
 
-        await update_progress(0.45, "executing_candidates")
-        executions = []
-        for idx, cand in enumerate(candidates[: config.requests_per_node * config.rounds]):
-            if await registry.is_cancelled(run_id):
-                raise CancelledError()
-            q = cand.get("query") or cand.get("ql") or ""
-            if not q:
-                continue
-            resp = await graph_client.execute_query(q)
-            status = "ok" if resp is not None else "error"
-            executions.append({"index": idx, "query": q, "response": resp, "status": status})
-            await log(f"Executed candidate #{idx + 1}: status={status}")
-            await update_progress(0.45 + 0.4 * (idx + 1) / max(len(candidates), 1), "executing_candidates")
-            await asyncio.sleep(0.1)
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=str(legacy_dir),
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
 
-        summary = {
-            "endpoint": config.endpoint_url,
-            "counts": schema_summary.get("counts", {}),
-            "candidates": len(candidates),
-            "executions": len(executions),
-            "notes": config.notes,
-        }
+        line_count = 0
+        if process.stdout:
+            while True:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                decoded = line.decode(errors="ignore").rstrip()
+                await log(decoded)
+                line_count += 1
+                if line_count % 5 == 0:
+                    await update_progress(min(0.8, 0.05 + line_count * 0.01), "running")
 
-        raw = {
-            "schema": schema_summary,
-            "candidates": candidates,
-            "executions": executions,
-            "summary": summary,
-        }
+        returncode = await process.wait()
+        if returncode != 0:
+            await log(f"Legacy pipeline failed with code {returncode}")
+            await registry.update_status(run_id, status=RunStatus.failed, error=f"Legacy pipeline exited {returncode}")
+            return
 
         await update_progress(0.9, "saving")
+        summary, raw = await _collect_outputs(run_dir)
         await registry.save_results(run_id, summary=summary, raw_json=raw)
-        await _write_stats_table(run_id, registry, summary)
         await registry.update_status(run_id, status=RunStatus.done, progress=Progress(pct=1.0, stage="done"))
         await log("Run complete. Artifacts written.")
 
-    except CancelledError:
-        await log("Run cancelled")
-        await registry.update_status(run_id, status=RunStatus.cancelled, progress=Progress(pct=0.0, stage="cancelled"))
     except HTTPException as exc:
         await registry.append_log(run_id, f"Validation failed: {exc.detail}")
         await registry.update_status(run_id, status=RunStatus.failed, error=str(exc.detail))
@@ -108,35 +97,17 @@ async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None
         await registry.update_status(run_id, status=RunStatus.failed, error=str(exc))
 
 
-class CancelledError(Exception):
-    """Raised when a cancel request is detected."""
+async def _collect_outputs(run_dir: Path) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Gather summary/raw outputs from the legacy pipeline."""
+    summary: Dict[str, Any] = {}
+    raw: Dict[str, Any] = {}
+    output_dir = run_dir / "prediql-output"
 
-
-def summarize_introspection(introspection: dict | None) -> Dict[str, Any]:
-    if not introspection or "data" not in introspection:
-        return {"counts": {"types": 0, "queries": 0, "mutations": 0}, "raw": introspection}
-    schema = introspection.get("data", {}).get("__schema", {})
-    types = schema.get("types") or []
-    counts = {
-        "types": len(types),
-        "queries": 1 if schema.get("queryType") else 0,
-        "mutations": 1 if schema.get("mutationType") else 0,
-    }
-    return {"counts": counts, "raw": introspection}
-
-
-async def _write_stats_table(run_id: str, registry: RunRegistry, summary: Dict[str, Any]) -> None:
-    record = await registry.get_record(run_id)
-    if not record or not record.logs_path:
-        return
-    run_dir = record.logs_path.parent
-    table_path = run_dir / "stats_table_allrounds.txt"
-    counts = summary.get("counts", {}) or {}
-    lines = [
-        "PrediQL Run Summary",
-        f"Endpoint: {summary.get('endpoint', 'n/a')}",
-        f"Candidates: {summary.get('candidates', 'n/a')}",
-        f"Executions: {summary.get('executions', 'n/a')}",
-        f"Types: {counts.get('types', 'n/a')}, Queries: {counts.get('queries', 'n/a')}, Mutations: {counts.get('mutations', 'n/a')}",
-    ]
-    table_path.write_text("\n".join(lines), encoding="utf-8")
+    stats_file = output_dir / "stats_table_allrounds.txt"
+    if stats_file.exists():
+        target = run_dir / "stats_table_allrounds.txt"
+        target.write_text(stats_file.read_text(encoding="utf-8"), encoding="utf-8")
+        summary["statsTable"] = str(target)
+    if output_dir.exists():
+        raw["outputDir"] = str(output_dir)
+    return summary, raw
