@@ -16,7 +16,7 @@ Research paper (for reference): https://arxiv.org/pdf/2510.10407
   ```
 - Static build (Cloudflare Pages): `npm run build` (exports to `frontend/out`)
 
-## Backend (FastAPI + Ollama)
+## Backend (FastAPI + Ollama / API LLMs)
 - Location: `backend/app`
 - Endpoints:
   - `POST /api/runs` → create run, returns `{ runId, status }`
@@ -25,7 +25,8 @@ Research paper (for reference): https://arxiv.org/pdf/2510.10407
   - `GET /api/runs/{runId}/results` → `{ summary, artifacts[{name,url}], rawJson }`
   - `GET /api/runs/{runId}/artifacts/{filename}` → serve run artifacts
   - `POST /api/runs/{runId}/cancel` → request cancellation
-- Runner behavior (MVP): introspects the GraphQL endpoint, summarizes schema counts, asks Ollama for candidate queries, optionally executes them, saves `raw_results.json`, `summary.json`, and `logs.txt` under `backend/runs/{runId}/`.
+- Runner behavior (MVP): introspects the GraphQL endpoint, summarizes schema counts, asks the configured LLM for candidate queries, optionally executes them, saves `raw_results.json`, `summary.json`, and `logs.txt` under `backend/runs/{runId}/`.
+- LLM providers: `ollama` (default, local), `openai_compatible` (requires user API key), `gemini` (requires user API key).
 
 ## Docker Compose (backend + Ollama)
 - File: `docker-compose.yml`
@@ -39,9 +40,12 @@ Research paper (for reference): https://arxiv.org/pdf/2510.10407
   docker compose up --build
   # backend on http://localhost:8000, ollama on 11434 (keep private in prod)
   ```
+- If you only use API providers (OpenAI-compatible or Gemini), you can run just the backend service without the Ollama container; ensure users provide `apiKey` in the UI.
 
 ### Backend env vars
 - `OLLAMA_BASE_URL` (default `http://ollama:11434`)
+- `OPENAI_BASE_URL` (default `https://api.openai.com/v1`)
+- `GEMINI_BASE_URL` (default `https://generativelanguage.googleapis.com`)
 - `RUNS_DIR` (default `/app/runs`)
 - `CORS_ORIGINS` (comma-separated, default `http://localhost:3000`)
 - `MAX_ROUNDS` (default 5)

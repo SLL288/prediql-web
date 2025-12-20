@@ -7,16 +7,32 @@ from typing import Any, Dict, List
 from fastapi import HTTPException
 
 from app.core.graphql_client import GraphQLClient
-from app.core.models import Progress, RunConfig, RunStatus
+from app.core.models import Progress, RunConfig, RunStatus, settings
 from app.core.ollama_client import OllamaClient
+from app.core.openai_client import OpenAIClient
+from app.core.gemini_client import GeminiClient
 from app.core.storage import RunRegistry
 from app.core.utils import parse_headers
+
+
+def _build_llm_client(config: RunConfig):
+    if config.llm_provider == "ollama":
+        return OllamaClient(model=config.model or settings.DEFAULT_MODEL)
+    if config.llm_provider == "openai_compatible":
+        if not config.api_key:
+            raise HTTPException(status_code=400, detail="apiKey required for openai_compatible")
+        return OpenAIClient(api_key=config.api_key, model=config.model or "gpt-4o-mini", base_url=settings.OPENAI_BASE_URL)
+    if config.llm_provider == "gemini":
+        if not config.api_key:
+            raise HTTPException(status_code=400, detail="apiKey required for gemini")
+        return GeminiClient(api_key=config.api_key, model=config.model or "gemini-1.5-flash", base_url=settings.GEMINI_BASE_URL)
+    raise HTTPException(status_code=400, detail="Unsupported llmProvider")
 
 
 async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None:
     headers = parse_headers(config.graphql_headers_json)
     graph_client = GraphQLClient(config.endpoint_url, headers=headers)
-    ollama = OllamaClient(model=config.model)
+    llm_client = _build_llm_client(config)
 
     async def log(msg: str) -> None:
         await registry.append_log(run_id, msg)
@@ -38,7 +54,7 @@ async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None
             if await registry.is_cancelled(run_id):
                 raise CancelledError()
             await log(f"Round {r + 1}/{config.rounds}: asking LLM for candidates")
-            batch = await ollama.generate_candidates(json.dumps(schema_summary), config.requests_per_node)
+            batch = await llm_client.generate_candidates(json.dumps(schema_summary), config.requests_per_node)
             candidates.extend(batch)
             await update_progress(0.15 + (0.25 * (r + 1) / max(config.rounds, 1)), "generating_candidates")
             await asyncio.sleep(0.2)

@@ -9,7 +9,7 @@ import { apiMode } from '../lib/apiClient'
 const providerOptions: { value: LlmProvider; label: string }[] = [
   { value: 'ollama', label: 'Ollama (local/self-hosted)' },
   { value: 'openai_compatible', label: 'OpenAI Compatible API' },
-  { value: 'other', label: 'Other (manual)' },
+  { value: 'gemini', label: 'Gemini API' },
 ]
 
 type Props = {
@@ -34,7 +34,7 @@ export function RunForm({ onSubmit, isSubmitting }: Props) {
     }
   }, [llmProvider, model])
 
-  const requiresApiKey = llmProvider === 'openai_compatible' || llmProvider === 'other'
+  const requiresApiKey = llmProvider === 'openai_compatible' || llmProvider === 'gemini'
 
   const isValid = useMemo(() => {
     const nextErrors: string[] = []

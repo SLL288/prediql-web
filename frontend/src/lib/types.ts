@@ -1,4 +1,4 @@
-export type LlmProvider = 'ollama' | 'openai_compatible' | 'other'
+export type LlmProvider = 'ollama' | 'openai_compatible' | 'gemini'
 
 export type RunPayload = {
   endpointUrl: string
