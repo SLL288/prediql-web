@@ -14,6 +14,14 @@ export function HeaderBar() {
           <div>
             <h1 className="text-2xl font-semibold">PrediQL Web</h1>
             <p className="text-sm text-slate-300">GraphQL recon, simplified</p>
+            <a
+              href="https://arxiv.org/pdf/2510.10407"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-cyan-200 hover:text-white underline underline-offset-4"
+            >
+              Research paper (arXiv 2510.10407)
+            </a>
           </div>
         </div>
         <div className="flex items-center gap-2">
