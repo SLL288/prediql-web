@@ -24,11 +24,8 @@ export function HeaderBar() {
             </a>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-100">
-            UI Prototype
-          </span>
-          <span className={clsx('rounded-full px-3 py-1 text-xs font-semibold text-slate-900', 'bg-amber-300')}>
+        <div className="flex items-center gap-2 text-xs">
+          <span className={clsx('rounded-full px-3 py-1 font-semibold text-slate-900', 'bg-amber-300')}>
             {apiMode === 'mock' ? 'Mock API' : 'REST API'}
           </span>
         </div>
