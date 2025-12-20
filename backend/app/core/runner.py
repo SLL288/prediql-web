@@ -93,6 +93,7 @@ async def run_job(run_id: str, config: RunConfig, registry: RunRegistry) -> None
 
         await update_progress(0.9, "saving")
         await registry.save_results(run_id, summary=summary, raw_json=raw)
+        await _write_stats_table(run_id, registry, summary)
         await registry.update_status(run_id, status=RunStatus.done, progress=Progress(pct=1.0, stage="done"))
         await log("Run complete. Artifacts written.")
 
@@ -122,3 +123,20 @@ def summarize_introspection(introspection: dict | None) -> Dict[str, Any]:
         "mutations": 1 if schema.get("mutationType") else 0,
     }
     return {"counts": counts, "raw": introspection}
+
+
+async def _write_stats_table(run_id: str, registry: RunRegistry, summary: Dict[str, Any]) -> None:
+    record = await registry.get_record(run_id)
+    if not record or not record.logs_path:
+        return
+    run_dir = record.logs_path.parent
+    table_path = run_dir / "stats_table_allrounds.txt"
+    counts = summary.get("counts", {}) or {}
+    lines = [
+        "PrediQL Run Summary",
+        f"Endpoint: {summary.get('endpoint', 'n/a')}",
+        f"Candidates: {summary.get('candidates', 'n/a')}",
+        f"Executions: {summary.get('executions', 'n/a')}",
+        f"Types: {counts.get('types', 'n/a')}, Queries: {counts.get('queries', 'n/a')}, Mutations: {counts.get('mutations', 'n/a')}",
+    ]
+    table_path.write_text("\n".join(lines), encoding="utf-8")

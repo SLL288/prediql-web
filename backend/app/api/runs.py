@@ -76,6 +76,7 @@ async def get_results(run_id: str, registry: RunRegistry = Depends(get_registry)
             _artifact(run_id, "raw_results.json"),
             _artifact(run_id, "summary.json"),
             _artifact(run_id, "logs.txt"),
+            _artifact(run_id, "stats_table_allrounds.txt"),
         ],
     )
 
